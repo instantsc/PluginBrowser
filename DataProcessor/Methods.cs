@@ -115,7 +115,10 @@ public class Methods
             return;
         }
 
-        var pluginEmbedList = new EmbedMessages { Repositories = [] };
+        var payLoad = new WebhookPayload
+        {
+            EmbeddedMessages = []
+        };
 
         foreach (var (key, changed, @new) in changedPluginDetails
                      .GroupBy(x => forkToPluginMap[x.Fork])
@@ -128,15 +131,15 @@ public class Methods
             {
                 foreach (var fork in @new.OrderBy(x => x.Author).ThenBy(x => x.Name))
                 {
-                    var processedCommitMessage = SubstringBefore(fork.LatestCommit.Message, new[] {'\r', '\n'}).Replace("`", "");
-                    var pluginForkEmbed = new Repository
+                    var processedCommitMessage = SubstringBefore(fork.LatestCommit.Message, new[] { '\r', '\n' }).Replace("`", "");
+                    var pluginForkEmbed = new EmbedMessages()
                     {
                         Author = $"Author: {fork.Author}",
                         AuthorURL = $"https://github.com/{fork.Author}",
                         IsNewFork = true,
-                        Fork = new EmbedField {IsInline = true, FieldName = "__New__ Fork", FieldDesc = $"[{fork.Author}/{fork.Name}](<{GithubUrls.Repository(fork.Location, fork.Name)}>)"},
-                        CommitWhen = new EmbedField {IsInline = true, FieldName = "Last Commit Date", FieldDesc = $"{ToUnixTimestampTag(fork.LatestCommit.Date)}"},
-                        LastCommitMessage = new EmbedField {IsInline = false, FieldName = "Last Commit Message", FieldDesc = $"```\n{processedCommitMessage}\n```"}
+                        Fork = new EmbedField { IsInline = true, FieldName = "__New__ Fork", FieldDesc = $"[{fork.Author}/{fork.Name}](<{GithubUrls.Repository(fork.Location, fork.Name)}>)" },
+                        CommitWhen = new EmbedField { IsInline = true, FieldName = "Last Commit Date", FieldDesc = $"{ToUnixTimestampTag(fork.LatestCommit.Date)}" },
+                        LastCommitMessage = new EmbedField { IsInline = false, FieldName = "Last Commit Message", FieldDesc = $"```\n{processedCommitMessage}\n```" }
                     };
 
                     var latestRelease = fork.LatestRelease;
@@ -145,12 +148,12 @@ public class Methods
                         var displayTitle = latestRelease.Title.Replace("`", "");
 
                         pluginForkEmbed.HasRelease = true;
-                        pluginForkEmbed.NewLatestRelease = new EmbedField {IsInline = true, FieldName = "New Latest Release", FieldDesc = $"```\n{displayTitle}\n```"};
+                        pluginForkEmbed.NewLatestRelease = new EmbedField { IsInline = true, FieldName = "New Latest Release", FieldDesc = $"```\n{displayTitle}\n```" };
                         pluginForkEmbed.NewLatestReleaseTag = new EmbedField
-                            {IsInline = true, FieldName = "Release Tag", FieldDesc = $"[{latestRelease.Id}](<{GithubUrls.Release(fork.Author, fork.Name, latestRelease.Id)}>)"};
+                        { IsInline = true, FieldName = "Release Tag", FieldDesc = $"[{latestRelease.Id}](<{GithubUrls.Release(fork.Author, fork.Name, latestRelease.Id)}>)" };
                     }
 
-                    pluginEmbedList.Repositories.Add(pluginForkEmbed);
+                    payLoad.EmbeddedMessages.Add(pluginForkEmbed);
                 }
             }
 
@@ -158,24 +161,24 @@ public class Methods
             {
                 foreach (var (fork, newCommit, newForkReleases) in changed.OrderBy(x => x.Fork.Author).ThenBy(x => x.Fork.Name))
                 {
-                    var pluginForkEmbed = new Repository
+                    var pluginForkEmbed = new EmbedMessages
                     {
                         Author = $"Author: {fork.Author}",
                         AuthorURL = $"https://github.com/{fork.Author}",
                         IsNewFork = false,
-                        Fork = new EmbedField {IsInline = true, FieldName = "Fork", FieldDesc = $"[{fork.Author}/{fork.Name}](<{GithubUrls.Repository(fork.Location, fork.Name)}>)"}
+                        Fork = new EmbedField { IsInline = true, FieldName = "Fork", FieldDesc = $"[{fork.Author}/{fork.Name}](<{GithubUrls.Repository(fork.Location, fork.Name)}>)" }
                     };
 
                     if (newCommit != null)
                     {
-                        var processedCommitMessage = SubstringBefore(newCommit.Message, new[] {'\r', '\n'}).Replace("`", "");
+                        var processedCommitMessage = SubstringBefore(newCommit.Message, new[] { '\r', '\n' }).Replace("`", "");
 
-                        pluginForkEmbed.CommitWhen = new EmbedField {IsInline = true, FieldName = "Last Commit Date", FieldDesc = $"{ToUnixTimestampTag(newCommit.Date)}"};
-                        pluginForkEmbed.LastCommitMessage = new EmbedField { IsInline = false, FieldName = "Last Commit Message", FieldDesc = $"```\n{processedCommitMessage}\n```"};
+                        pluginForkEmbed.CommitWhen = new EmbedField { IsInline = true, FieldName = "Last Commit Date", FieldDesc = $"{ToUnixTimestampTag(newCommit.Date)}" };
+                        pluginForkEmbed.LastCommitMessage = new EmbedField { IsInline = false, FieldName = "Last Commit Message", FieldDesc = $"```\n{processedCommitMessage}\n```" };
                     }
                     else
                     {
-                        pluginForkEmbed.LastCommitMessage = new EmbedField {IsInline = false, FieldName = "Last Commit Message", FieldDesc = "```\nN/A\n```"};
+                        pluginForkEmbed.LastCommitMessage = new EmbedField { IsInline = false, FieldName = "Last Commit Message", FieldDesc = "```\nN/A\n```" };
                     }
 
                     if (newForkReleases != null && newForkReleases.Any())
@@ -184,72 +187,66 @@ public class Methods
                         var displayTitle = latestRelease.Title.Replace("`", "");
 
                         pluginForkEmbed.HasRelease = true;
-                        pluginForkEmbed.NewLatestRelease = new EmbedField {IsInline = true, FieldName = "New Latest Release", FieldDesc = $"```\n{displayTitle}\n```"};
+                        pluginForkEmbed.NewLatestRelease = new EmbedField { IsInline = true, FieldName = "New Latest Release", FieldDesc = $"```\n{displayTitle}\n```" };
                         pluginForkEmbed.NewLatestReleaseTag = new EmbedField
-                            {IsInline = true, FieldName = "Release Tag", FieldDesc = $"[{latestRelease.Id}](<{GithubUrls.Release(fork.Author, fork.Name, latestRelease.Id)}>)"};
+                        { IsInline = true, FieldName = "Release Tag", FieldDesc = $"[{latestRelease.Id}](<{GithubUrls.Release(fork.Author, fork.Name, latestRelease.Id)}>)" };
 
                         if (newCommit == null)
                         {
-                            pluginForkEmbed.CommitWhen = new EmbedField {IsInline = true, FieldName = "Last Release Date", FieldDesc = $"{ToUnixTimestampTag(latestRelease.Date)}"};
+                            pluginForkEmbed.CommitWhen = new EmbedField { IsInline = true, FieldName = "Last Release Date", FieldDesc = $"{ToUnixTimestampTag(latestRelease.Date)}" };
                         }
                     }
 
-                    pluginEmbedList.Repositories.Add(pluginForkEmbed);
+                    payLoad.EmbeddedMessages.Add(pluginForkEmbed);
                 }
             }
         }
 
-        var discordEmbedBatches = pluginEmbedList.Repositories
-            .Select(repo => new
+        payLoad.EmbeddedMessages.Add(new EmbedMessages { IsRepoEmbed = false, Title = "Data generated using <https://instantsc.github.io/PluginBrowser>, check it out for the full plugin list", EmbedColor = 5814783 });
+
+        var discordEmbedBatches = payLoad.EmbeddedMessages
+            .Select((message, index) =>
             {
-                author = new { name = repo.Author, url = repo.AuthorURL },
-                fields = new[]
+                object embed;
+                if (message.IsRepoEmbed)
                 {
-                    new {name = repo.Fork.FieldName, value = repo.Fork.FieldDesc, inline = repo.Fork.IsInline},
-                    new {name = repo.CommitWhen.FieldName, value = repo.CommitWhen.FieldDesc, inline = repo.CommitWhen.IsInline},
-                    new {name = repo.LastCommitMessage.FieldName, value = repo.LastCommitMessage.FieldDesc, inline = repo.LastCommitMessage.IsInline},
-                    new {name = repo.NewLatestRelease.FieldName, value = repo.NewLatestRelease.FieldDesc, inline = repo.NewLatestRelease.IsInline},
-                    new {name = repo.NewLatestReleaseTag.FieldName, value = repo.NewLatestReleaseTag.FieldDesc, inline = repo.NewLatestReleaseTag.IsInline}
-                }.Where(field => !string.IsNullOrEmpty(field.name) && !string.IsNullOrEmpty(field.value)).ToArray()
+                    var author = new { name = message.Author, url = message.AuthorURL };
+                    var fields = new[]
+                    {
+                            new { name = message.Fork.FieldName, value = message.Fork.FieldDesc, inline = message.Fork.IsInline },
+                            new { name = message.CommitWhen.FieldName, value = message.CommitWhen.FieldDesc, inline = message.CommitWhen.IsInline },
+                            new { name = message.LastCommitMessage.FieldName, value = message.LastCommitMessage.FieldDesc, inline = message.LastCommitMessage.IsInline },
+                            new { name = message.NewLatestRelease.FieldName, value = message.NewLatestRelease.FieldDesc, inline = message.NewLatestRelease.IsInline },
+                            new { name = message.NewLatestReleaseTag.FieldName, value = message.NewLatestReleaseTag.FieldDesc, inline = message.NewLatestReleaseTag.IsInline }
+                    }
+                    .Where(field => !string.IsNullOrEmpty(field.name) && !string.IsNullOrEmpty(field.value))
+                    .ToArray();
+
+                    embed = new { author, fields, color = message.EmbedColor };
+                }
+                else
+                {
+                    embed = new { title = message.Title, description = message.Body, color = message.EmbedColor };
+                }
+                return new { embed, index };
             })
-            .Select((embed, index) => new { embed, index })
-            .GroupBy(x => x.index / 10) // Grouping by 10 to adhere to Discord's limit of 10 embeds per message
+            .GroupBy(x => x.index / 10)
             .Select(g => g.Select(x => x.embed).ToArray())
             .ToList();
 
         using (var httpClient = new HttpClient())
         {
-            await httpClient.PostAsJsonAsync(releaseWebHook, new
-            {
-                content = "__**Warning! This message was formed automatically and contains content from third-party sources. Proceed with caution**__",
-                embeds = new List<object>(),
-                flags = 4096 // no notification
-            });
+            var warningMessage = "__**Warning! This message was formed automatically and contains content from third-party sources. Proceed with caution**__";
 
-            foreach (var embedBatch in discordEmbedBatches)
+            await Task.WhenAll(discordEmbedBatches.Select((embedBatch, batchIndex) =>
             {
                 var payload = new
                 {
-                    content = string.Empty,
-                    embeds = embedBatch,
-                    flags = 4096 // no notification
+                    content = batchIndex == 0 ? warningMessage : string.Empty,
+                    embeds = embedBatch
                 };
-
-                await httpClient.PostAsJsonAsync(releaseWebHook, payload);
-            }
-
-            await httpClient.PostAsJsonAsync(releaseWebHook, new
-            {
-                content = string.Empty,
-                embeds = new[]
-                {
-                    new
-                    {
-                        title = "Data generated using <https://instantsc.github.io/PluginBrowser>, check it out for the full plugin list",
-                        color = 1127128
-                    }
-                }
-            });
+                return httpClient.PostAsJsonAsync(releaseWebHook, payload);
+            }));
         }
     }
 
@@ -273,15 +270,19 @@ public class Methods
     }
 }
 
-public class EmbedMessages
+public class WebhookPayload
 {
-    public List<Repository> Repositories { get; set; } = [];
+    public List<EmbedMessages> EmbeddedMessages { get; set; } = [];
 }
 
-public class Repository
+public class EmbedMessages
 {
+    public int EmbedColor { get; set; } = 22657;
+    public bool IsRepoEmbed { get; set; } = true;
     public string Author { get; set; } = string.Empty;
     public string AuthorURL { get; set; } = string.Empty;
+    public string Title { get; set; } = "";
+    public string Body { get; set; } = "";
     public bool IsNewFork { get; set; }
     public EmbedField Fork { get; set; } = new();
     public EmbedField CommitWhen { get; set; } = new();
