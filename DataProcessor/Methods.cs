@@ -236,9 +236,9 @@ public class Methods
 
         using (var httpClient = new HttpClient())
         {
-            var warningMessage = "__**Warning! This message was formed automatically and contains content from third-party sources. Proceed with caution**__";
+            const string warningMessage = "__**Warning! This message was formed automatically and contains content from third-party sources. Proceed with caution**__";
 
-            await Task.WhenAll(discordEmbedBatches.Select((embedBatch, batchIndex) =>
+            var tasks = discordEmbedBatches.Select((embedBatch, batchIndex) =>
             {
                 var payload = new
                 {
@@ -246,7 +246,9 @@ public class Methods
                     embeds = embedBatch
                 };
                 return httpClient.PostAsJsonAsync(releaseWebHook, payload);
-            }));
+            }).ToList();
+
+            await Task.WhenAll(tasks);
         }
     }
 
